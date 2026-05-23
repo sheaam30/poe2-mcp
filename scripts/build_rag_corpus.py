@@ -10,6 +10,13 @@ Usage:
 
 The script respects the wiki's rate limits by adding a small delay between
 requests (default 0.3s). Restart to resume — already-written files are skipped.
+
+Patch notes are NOT crawled automatically — they live in corpus/patch_notes/ as
+hand-maintained markdown files. To update after a new patch:
+  1. Fetch the forum thread: https://www.pathofexile.com/forum/view-thread/<id>
+  2. Write chunked markdown files to corpus/patch_notes/ (one file per major section)
+  3. Re-run: python scripts/embed_corpus.py
+Current patch notes: 0.5.0 Return of the Ancients (3932540)
 """
 import argparse
 import asyncio
