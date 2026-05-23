@@ -1,0 +1,105 @@
+import asyncio
+from mcp.server.fastmcp import FastMCP
+from poe2_mcp import wiki
+
+mcp = FastMCP(
+    "poe2",
+    instructions="Path of Exile 2 game data — items, gems, and passives via poewiki.net",
+)
+
+
+@mcp.tool()
+async def search_wiki(query: str, limit: int = 10) -> str:
+    """Search the PoE wiki for pages matching a query. Returns up to `limit` page titles.
+    Use this to discover item names, gem names, passive names, or any other game concept
+    before fetching detailed data with get_item, get_gem, or get_passive."""
+    titles = await wiki.search_pages(query, limit=min(limit, 20))
+    if not titles:
+        return f"No wiki pages found for '{query}'."
+    return "\n".join(f"- {t}" for t in titles)
+
+
+@mcp.tool()
+async def get_item(name: str) -> str:
+    """Get detailed stats for a PoE item — base types (weapons, armour, flasks) or unique items.
+    Returns structured data including damage ranges, requirements, implicits, and tags.
+    Use search_wiki first if you're unsure of the exact page name."""
+    wikitext = await wiki.fetch_wikitext(name)
+    if not wikitext:
+        return f"Page '{name}' not found."
+    data = wiki.parse_item_template(wikitext)
+    if not data:
+        return f"No item template found on '{name}'. Try search_wiki to find the correct page name."
+    return wiki.format_item(data)
+
+
+@mcp.tool()
+async def get_gem(name: str) -> str:
+    """Get details for a skill gem or support gem — description, tags, cast time, required level,
+    mana cost, and static stats. Use search_wiki first if unsure of the exact name."""
+    wikitext = await wiki.fetch_wikitext(name)
+    if not wikitext:
+        return f"Page '{name}' not found."
+    data = wiki.parse_item_template(wikitext)
+    if not data:
+        return f"No gem data found on '{name}'. Try search_wiki to find the correct page name."
+    class_id = data.get("class_id", "")
+    if "Skill Gem" not in class_id:
+        return f"'{name}' does not appear to be a skill gem (class_id: {class_id}). Try get_item instead."
+    return wiki.format_gem(data)
+
+
+@mcp.tool()
+async def search_gems(name: str, gem_tag: str = "") -> str:
+    """Search for skill gems by name fragment, optionally filtered by a gem tag (e.g. 'Fire',
+    'AoE', 'Support', 'Projectile', 'Melee'). Returns matching gem names and their tags."""
+    titles = await wiki.search_pages(name, limit=15)
+    if not titles:
+        return f"No results for '{name}'."
+
+    wikitexts = await asyncio.gather(*[wiki.fetch_wikitext(t) for t in titles])
+
+    results = []
+    for title, wikitext in zip(titles, wikitexts):
+        data = wiki.parse_item_template(wikitext)
+        if "Skill Gem" not in data.get("class_id", ""):
+            continue
+        tags = data.get("gem_tags", "")
+        if gem_tag and gem_tag.lower() not in tags.lower():
+            continue
+        gem_name = data.get("name", title)
+        desc = data.get("gem_description", "")
+        line = f"- {gem_name}"
+        if tags:
+            line += f"  [{tags}]"
+        if desc:
+            line += f"\n  {desc}"
+        results.append(line)
+
+    if not results:
+        msg = f"No gems found matching '{name}'"
+        if gem_tag:
+            msg += f" with tag '{gem_tag}'"
+        return msg + "."
+    return "\n".join(results)
+
+
+@mcp.tool()
+async def get_passive(name: str) -> str:
+    """Get the description and effects of a passive skill tree node (including keystones
+    and notables). Returns prose description extracted from the wiki page."""
+    wikitext = await wiki.fetch_wikitext(name)
+    if not wikitext:
+        return f"Page '{name}' not found."
+    prose = wiki.extract_prose(wikitext)
+    if not prose:
+        return f"No description found for passive '{name}'."
+    return f"=== {name} ===\n{prose}"
+
+
+def main() -> None:
+    mcp.run(transport="stdio")
+
+
+if __name__ == "__main__":
+    main()
