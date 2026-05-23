@@ -11,6 +11,8 @@ A locally-hosted MCP server that gives Claude access to Path of Exile 2 game dat
 | `get_gem` | Skill gem details: description, tags, cast time, mana cost, static stats |
 | `search_gems` | Search gems by name + optional tag filter (Fire, AoE, Support, Melee…) |
 | `search_items` | Search non-gem items by name + optional class filter (Currency, Map, SoulCore…) |
+| `get_monster` | Boss/unique monster stats: resistances, weaknesses, damage types, phase guide |
+| `get_mechanic` | Game mechanic explanations: Critical Strike, Ailments, Freeze, Leech, Evasion… |
 | `get_passive` | Description of any passive tree node, keystone, or notable |
 
 ## Requirements

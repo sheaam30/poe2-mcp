@@ -105,9 +105,9 @@ async def fetch_wikitext(page: str) -> str:
     return ""
 
 
-def parse_item_template(wikitext: str) -> dict[str, str]:
-    """Extract key-value pairs from the {{Item|...}} template block."""
-    match = re.search(r"\{\{Item\s*\n(.*?)\n\}\}", wikitext, re.DOTALL)
+def _parse_template(wikitext: str, name: str) -> dict[str, str]:
+    """Extract key-value pairs from any {{TemplateName|...}} block."""
+    match = re.search(rf"\{{\{{{name}\s*\n(.*?)\n\}}\}}", wikitext, re.DOTALL)
     if not match:
         return {}
     result = {}
@@ -119,6 +119,16 @@ def parse_item_template(wikitext: str) -> dict[str, str]:
             if value:
                 result[key] = value
     return result
+
+
+def parse_item_template(wikitext: str) -> dict[str, str]:
+    """Extract key-value pairs from the {{Item|...}} template block."""
+    return _parse_template(wikitext, "Item")
+
+
+def parse_monster_template(wikitext: str) -> dict[str, str]:
+    """Extract key-value pairs from the {{MonsterBox|...}} template block."""
+    return _parse_template(wikitext, "MonsterBox")
 
 
 def strip_markup(text: str) -> str:
@@ -201,7 +211,71 @@ RUNE_FIELDS = [
     "name", "class_id", "description", "drop_level", "tags",
 ]
 
+MONSTER_FIELDS = [
+    "name", "rarity", "level", "location",
+    "resistance", "weakness", "damage", "modifier",
+]
+
 STAT_ID_RE = re.compile(r"^static_stat(\d+)_id$")
+
+
+def extract_monster_phases(wikitext: str) -> str:
+    """Extract phase headers and skill tables from a boss encounter page."""
+    lines = wikitext.splitlines()
+    output: list[str] = []
+    in_table = False
+    current_phase = ""
+
+    for line in lines:
+        stripped = line.strip()
+        # Phase/section headers
+        if re.match(r"^===?.+===?$", stripped):
+            header = re.sub(r"=+", "", stripped).strip()
+            if any(w in header.lower() for w in ["phase", "encounter", "form"]):
+                current_phase = header
+                output.append(f"\n[{header}]")
+                in_table = False
+            continue
+        # Table start
+        if stripped.startswith("{|"):
+            in_table = True
+            continue
+        # Table end
+        if stripped == "|}":
+            in_table = False
+            continue
+        if not in_table:
+            continue
+        # Header row — extract column names
+        if stripped.startswith("!"):
+            cols = [c.strip() for c in stripped.lstrip("!").split("!!")]
+            if "Skill" in cols:
+                output.append("  " + " | ".join(cols))
+            continue
+        # Row separator
+        if stripped == "|-":
+            continue
+        # Cell content
+        if stripped.startswith("|"):
+            cell = strip_markup(stripped.lstrip("|").strip())
+            if cell and len(cell) > 2:
+                output.append(f"  {cell}")
+
+    return "\n".join(output).strip()
+
+
+def format_monster(data: dict[str, str], phases: str = "") -> str:
+    if not data:
+        return "No data found."
+    lines = []
+    for f in MONSTER_FIELDS:
+        if f in data:
+            val = strip_markup(re.sub(r"<br\s*/?>", " / ", data[f]))
+            lines.append(f"{f}: {val}")
+    if phases:
+        lines.append("\n--- Encounter ---")
+        lines.append(phases)
+    return "\n".join(lines)
 
 
 def format_gem(data: dict[str, str]) -> str:

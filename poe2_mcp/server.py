@@ -137,6 +137,36 @@ async def search_items(query: str, item_class: str = "") -> str:
 
 
 @mcp.tool()
+async def get_monster(name: str) -> str:
+    """Get stats and encounter guide for a boss or unique monster.
+    Returns resistances, weaknesses, damage types, level, and phase-by-phase
+    skill breakdown where available. Use search_wiki to find the exact page name."""
+    wikitext = await wiki.fetch_wikitext(name)
+    if not wikitext:
+        return f"Page '{name}' not found."
+    data = wiki.parse_monster_template(wikitext)
+    if not data:
+        return f"No monster data found for '{name}'. Try search_wiki to find the correct page name."
+    phases = wiki.extract_monster_phases(wikitext)
+    return wiki.format_monster(data, phases)
+
+
+@mcp.tool()
+async def get_mechanic(name: str) -> str:
+    """Get a detailed explanation of a game mechanic or keyword — e.g. 'Critical strike',
+    'Ailment', 'Freeze', 'Bleed', 'Stun', 'Leech', 'Evasion', 'Block', 'Mana'.
+    Returns the wiki prose description with mechanics and formulas.
+    Use search_wiki to discover the exact page name."""
+    wikitext = await wiki.fetch_wikitext(name)
+    if not wikitext:
+        return f"Page '{name}' not found."
+    prose = wiki.extract_prose(wikitext, max_chars=2000)
+    if not prose:
+        return f"No description found for '{name}'."
+    return f"=== {name} ===\n{prose}"
+
+
+@mcp.tool()
 async def get_passive(name: str) -> str:
     """Get the description and effects of a passive skill tree node (including keystones
     and notables). Returns prose description extracted from the wiki page."""
