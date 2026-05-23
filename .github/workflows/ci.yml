@@ -29,3 +29,6 @@ jobs:
 
       - name: Import check
         run: .venv/bin/python -c "from poe2_mcp import wiki, server; print('imports ok')"
+
+      - name: Unit tests
+        run: SKIP_INTEGRATION=1 .venv/bin/pytest tests/test_parsers.py -v

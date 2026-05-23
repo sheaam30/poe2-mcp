@@ -4,7 +4,7 @@ from poe2_mcp import wiki
 
 mcp = FastMCP(
     "poe2",
-    instructions="Path of Exile 2 game data — items, gems, and passives via poewiki.net",
+    instructions="Path of Exile 2 game data — items, gems, and passives via poe2wiki.net",
 )
 
 
@@ -52,28 +52,39 @@ async def get_gem(name: str) -> str:
 @mcp.tool()
 async def search_gems(name: str, gem_tag: str = "") -> str:
     """Search for skill gems by name fragment, optionally filtered by a gem tag (e.g. 'Fire',
-    'AoE', 'Support', 'Projectile', 'Melee'). Returns matching gem names and their tags."""
-    titles = await wiki.search_pages(name, limit=15)
-    if not titles:
-        return f"No results for '{name}'."
+    'AoE', 'Support', 'Cold', 'Lightning', 'Projectile', 'Melee', 'Spell', 'Minion').
+    When gem_tag is provided, uses wiki category listings for complete coverage.
+    Returns matching gem names and their tags."""
+    if gem_tag:
+        # Category listing gives complete, accurate tag coverage
+        categories = [f"{gem_tag} skill gems", f"{gem_tag} support gems", f"{gem_tag} meta gems"]
+        cat_results = await asyncio.gather(*[wiki.list_category(c) for c in categories])
+        titles = [t for group in cat_results for t in group]
+        if name:
+            name_lower = name.lower()
+            titles = [t for t in titles if name_lower in t.lower()]
+        if not titles:
+            return f"No gems found with tag '{gem_tag}'" + (f" matching '{name}'" if name else "") + "."
+    else:
+        titles = await wiki.search_pages(name, limit=15)
+        if not titles:
+            return f"No results for '{name}'."
 
-    wikitexts = await asyncio.gather(*[wiki.fetch_wikitext(t) for t in titles])
+    wikitexts = await wiki.fetch_wikitexts_batch(titles)
 
     results = []
-    for title, wikitext in zip(titles, wikitexts):
-        data = wiki.parse_item_template(wikitext)
+    for title in titles:
+        data = wiki.parse_item_template(wikitexts.get(title, ""))
         if "Skill Gem" not in data.get("class_id", ""):
             continue
         tags = data.get("gem_tags", "")
-        if gem_tag and gem_tag.lower() not in tags.lower():
-            continue
         gem_name = data.get("name", title)
         desc = data.get("gem_description", "")
         line = f"- {gem_name}"
         if tags:
             line += f"  [{tags}]"
         if desc:
-            line += f"\n  {desc}"
+            line += f"\n  {wiki.strip_markup(desc)}"
         results.append(line)
 
     if not results:
@@ -94,11 +105,11 @@ async def search_items(query: str, item_class: str = "") -> str:
     if not titles:
         return f"No results for '{query}'."
 
-    wikitexts = await asyncio.gather(*[wiki.fetch_wikitext(t) for t in titles])
+    wikitexts = await wiki.fetch_wikitexts_batch(titles)
 
     results = []
-    for title, wikitext in zip(titles, wikitexts):
-        data = wiki.parse_item_template(wikitext)
+    for title in titles:
+        data = wiki.parse_item_template(wikitexts.get(title, ""))
         if not data:
             continue
         class_id = data.get("class_id", "")

@@ -39,6 +39,11 @@ async def _api(params: dict) -> dict:
     return data
 
 
+def _chunks(lst: list, n: int):
+    for i in range(0, len(lst), n):
+        yield lst[i : i + n]
+
+
 async def search_pages(query: str, limit: int = 10) -> list[str]:
     data = await _api({
         "action": "opensearch",
@@ -48,6 +53,43 @@ async def search_pages(query: str, limit: int = 10) -> list[str]:
         "limit": limit,
     })
     return data[1] if len(data) > 1 else []
+
+
+async def list_category(category: str, limit: int = 100) -> list[str]:
+    data = await _api({
+        "action": "query",
+        "format": "json",
+        "list": "categorymembers",
+        "cmtitle": f"Category:{category}",
+        "cmlimit": min(limit, 500),
+        "cmtype": "page",
+    })
+    return [m["title"] for m in data.get("query", {}).get("categorymembers", [])]
+
+
+async def fetch_wikitexts_batch(titles: list[str]) -> dict[str, str]:
+    """Fetch wikitext for multiple pages in as few requests as possible (50 per call)."""
+    if not titles:
+        return {}
+    results: dict[str, str] = {}
+    for chunk in _chunks(list(titles), 50):
+        async with _sem:
+            resp = await _get_client().get(WIKI_API, params={
+                "action": "query",
+                "format": "json",
+                "titles": "|".join(chunk),
+                "prop": "revisions",
+                "rvprop": "content",
+                "rvslots": "main",
+            })
+        resp.raise_for_status()
+        data = resp.json()
+        for page in data.get("query", {}).get("pages", {}).values():
+            revs = page.get("revisions", [])
+            if revs:
+                content = revs[0].get("slots", {}).get("main", {}).get("*", "")
+                results[page["title"]] = content
+    return results
 
 
 async def fetch_wikitext(page: str) -> str:
