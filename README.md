@@ -1,6 +1,6 @@
 # poe2-mcp
 
-A locally-hosted MCP server that gives Claude access to Path of Exile 2 game data via [poe2wiki.net](https://www.poe2wiki.net).
+A locally-hosted MCP server that gives Agents access to Path of Exile 2 game data via [poe2wiki.net](https://www.poe2wiki.net).
 
 ## Tools
 
