@@ -2,10 +2,13 @@
 import pytest
 from poe2_mcp.wiki import (
     parse_item_template,
+    parse_monster_template,
     strip_markup,
     extract_prose,
+    extract_monster_phases,
     format_gem,
     format_item,
+    format_monster,
 )
 
 GEM_WIKITEXT = """\
@@ -202,3 +205,115 @@ class TestFormatItem:
         data = {"name": "Test", "class_id": "Weapon", "metadata_id": "Metadata/foo"}
         result = format_item(data)
         assert "metadata_id" not in result
+
+
+MONSTER_WIKITEXT = """\
+{{MonsterBox
+|name                                    = The Lich King
+|rarity                                  = Unique
+|level                                   = 80
+|location                                = Gehenna
+|resistance                              = Fire, Cold
+|weakness                                = Lightning
+|damage                                  = Physical, Chaos
+}}
+
+==Phase 1==
+Some lore text here.
+
+{|
+! Skill !! Description
+|-
+| Bone Nova | Fires bones in all directions
+|-
+| Death Grip | Pulls target toward boss
+|}
+
+==Phase 2==
+
+{|
+! Skill !! Description
+|-
+| Final Form | Unleashes full power
+|}
+"""
+
+MECHANIC_WIKITEXT = """\
+{{SomeTemplate}}
+==Overview==
+Critical Strike is a mechanic that deals bonus damage.
+A critical strike deals increased damage based on your Critical Strike Multiplier.
+The base critical strike chance is 5%.
+WHERE items.crit LIKE "%crit%"
+AND (more sql stuff here)
+This line should appear after the SQL is filtered.
+"""
+
+
+class TestParseMonsterTemplate:
+    def test_parses_basic_fields(self):
+        data = parse_monster_template(MONSTER_WIKITEXT)
+        assert data["name"] == "The Lich King"
+        assert data["level"] == "80"
+        assert data["rarity"] == "Unique"
+
+    def test_parses_resistance_and_weakness(self):
+        data = parse_monster_template(MONSTER_WIKITEXT)
+        assert data["resistance"] == "Fire, Cold"
+        assert data["weakness"] == "Lightning"
+
+    def test_returns_empty_for_no_template(self):
+        assert parse_monster_template("No monster here.") == {}
+
+    def test_ignores_empty_values(self):
+        wikitext = "{{MonsterBox\n|name = Boss\n|empty_field =\n}}"
+        data = parse_monster_template(wikitext)
+        assert "empty_field" not in data
+
+
+class TestExtractMonsterPhases:
+    def test_extracts_phase_headers(self):
+        result = extract_monster_phases(MONSTER_WIKITEXT)
+        assert "Phase 1" in result or "phase" in result.lower()
+
+    def test_extracts_skill_table_rows(self):
+        result = extract_monster_phases(MONSTER_WIKITEXT)
+        assert "Bone Nova" in result or "Death Grip" in result
+
+    def test_returns_empty_for_no_phases(self):
+        result = extract_monster_phases("Just prose, no tables.")
+        assert result == ""
+
+
+class TestFormatMonster:
+    def test_formats_known_fields(self):
+        data = parse_monster_template(MONSTER_WIKITEXT)
+        result = format_monster(data)
+        assert "name: The Lich King" in result
+        assert "level: 80" in result
+        assert "resistance: Fire, Cold" in result
+
+    def test_appends_phases_when_present(self):
+        data = parse_monster_template(MONSTER_WIKITEXT)
+        result = format_monster(data, phases="[Phase 1]\n  Bone Nova")
+        assert "Encounter" in result
+        assert "Bone Nova" in result
+
+    def test_empty_data_returns_message(self):
+        assert format_monster({}) == "No data found."
+
+
+class TestExtractProseFiltering:
+    def test_filters_sql_where_clauses(self):
+        result = extract_prose(MECHANIC_WIKITEXT)
+        assert "WHERE" not in result
+        assert "LIKE" not in result
+        assert "AND (" not in result
+
+    def test_keeps_prose_after_sql_lines(self):
+        result = extract_prose(MECHANIC_WIKITEXT)
+        assert "This line should appear" in result
+
+    def test_keeps_legitimate_prose(self):
+        result = extract_prose(MECHANIC_WIKITEXT)
+        assert "Critical Strike is a mechanic" in result

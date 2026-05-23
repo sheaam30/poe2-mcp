@@ -154,12 +154,15 @@ def strip_markup(text: str) -> str:
     return text.strip()
 
 
+_SQL_RE = re.compile(r"\b(WHERE|LIKE\s+['\"]%|AND\s*\(|SELECT\s+\w|FROM\s+\w+\s+WHERE)\b", re.IGNORECASE)
+
+
 def extract_prose(wikitext: str, max_chars: int = 800) -> str:
     """Return the first meaningful prose block from a wiki page."""
     lines = []
     for line in wikitext.splitlines():
         stripped = line.strip()
-        # Skip template lines, headers, table markup, category links
+        # Skip template lines, headers, table markup, category links, SQL fragments
         if (
             stripped.startswith("{{")
             or stripped.startswith("|")
@@ -169,6 +172,7 @@ def extract_prose(wikitext: str, max_chars: int = 800) -> str:
             or stripped.startswith("{|")
             or stripped.startswith("|-")
             or not stripped
+            or _SQL_RE.search(stripped)
         ):
             continue
         cleaned = strip_markup(stripped)

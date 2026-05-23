@@ -14,6 +14,7 @@ A locally-hosted MCP server that gives Claude access to Path of Exile 2 game dat
 | `get_monster` | Boss/unique monster stats: resistances, weaknesses, damage types, phase guide |
 | `get_mechanic` | Game mechanic explanations: Critical Strike, Ailments, Freeze, Leech, Evasion… |
 | `get_passive` | Description of any passive tree node, keystone, or notable |
+| `search_corpus` | Semantic search over local knowledge base (mechanics, monsters, ascendancies, passives, endgame) |
 
 ## Requirements
 
@@ -59,6 +60,27 @@ Once registered, just ask Claude naturally:
 - "What does a Chaos Orb do?"
 - "Find all rune types"
 - "Search the wiki for Breach mechanics"
+
+## Local RAG corpus (semantic search)
+
+`search_corpus` provides semantic similarity search over a local ChromaDB index — useful for open-ended questions like "what counters fire damage?" or "how does ascendancy X work?".
+
+**First-time setup:**
+
+```bash
+# Install RAG dependencies
+.venv/bin/pip install "chromadb>=0.5.0"
+
+# Crawl the wiki and build markdown files (~207 pages)
+.venv/bin/python scripts/build_rag_corpus.py
+
+# Embed into ChromaDB (downloads ~80MB model on first run)
+.venv/bin/python scripts/embed_corpus.py
+```
+
+The corpus and vector DB are local-only (gitignored). Re-run both scripts after game patches to pick up wiki updates.
+
+**Covered categories:** mechanics, ailments, ascendancy classes, keystone passives, act bosses, areas, endgame (Atlas, Breach, Delirium, Ritual, Waystone)
 
 ## Data & caching
 

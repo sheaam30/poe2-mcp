@@ -179,6 +179,33 @@ async def get_passive(name: str) -> str:
     return f"=== {name} ===\n{prose}"
 
 
+@mcp.tool()
+async def search_corpus(query: str, category: str = "", n_results: int = 5) -> str:
+    """Semantic search over the local PoE2 knowledge corpus (mechanics, monsters, ascendancies,
+    passives, endgame content). Returns the most relevant passages ranked by similarity.
+    Optional category filter: mechanics, monsters, ascendancy, passives, endgame, areas, acts.
+    Requires running scripts/embed_corpus.py first to build the local index."""
+    from poe2_mcp import rag
+
+    if not rag.is_available():
+        return (
+            "Corpus index not found. Build it first:\n"
+            "  python scripts/build_rag_corpus.py\n"
+            "  python scripts/embed_corpus.py"
+        )
+
+    results = rag.query(query, n_results=min(n_results, 10), category=category)
+    if not results:
+        return f"No results found for '{query}'" + (f" in category '{category}'" if category else "") + "."
+
+    lines = []
+    for r in results:
+        lines.append(f"[{r['category']}] {r['title']}  (relevance: {r['score']})")
+        lines.append(r["content"][:600])
+        lines.append("")
+    return "\n".join(lines).strip()
+
+
 def main() -> None:
     mcp.run(transport="stdio")
 
