@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\": {\"hookEventName\": \"Stop\", \"additionalContext\": \"Before finishing: review what changed this session. If any tools were added/modified, the data source changed, behavior changed, or new limitations were found — update README.md and/or CLAUDE.md now to reflect the current state.\"}}'",
+            "statusMessage": "Checking docs..."
+          }
+        ]
+      }
+    ]
+  }
+}
