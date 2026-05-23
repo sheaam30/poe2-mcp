@@ -85,6 +85,47 @@ async def search_gems(name: str, gem_tag: str = "") -> str:
 
 
 @mcp.tool()
+async def search_items(query: str, item_class: str = "") -> str:
+    """Search for non-gem items by name fragment, optionally filtered by item class.
+    Common item_class values: 'StackableCurrency', 'Map', 'SoulCore' (runes),
+    'Body Armour', 'Helmet', 'Gloves', 'Boots', 'Weapon', 'Shield', 'Flask'.
+    Unique items have rarity_id = 'unique'. Returns matching item names and classes."""
+    titles = await wiki.search_pages(query, limit=15)
+    if not titles:
+        return f"No results for '{query}'."
+
+    wikitexts = await asyncio.gather(*[wiki.fetch_wikitext(t) for t in titles])
+
+    results = []
+    for title, wikitext in zip(titles, wikitexts):
+        data = wiki.parse_item_template(wikitext)
+        if not data:
+            continue
+        class_id = data.get("class_id", "")
+        # Exclude gems — use search_gems for those
+        if "Skill Gem" in class_id:
+            continue
+        if item_class and item_class.lower() not in class_id.lower():
+            continue
+        item_name = data.get("name", title)
+        rarity = data.get("rarity_id", "")
+        line = f"- {item_name}  [{class_id}]"
+        if rarity and rarity != "normal":
+            line += f"  ({rarity})"
+        desc = data.get("description", "") or data.get("help_text", "")
+        if desc:
+            line += f"\n  {wiki.strip_markup(desc)}"
+        results.append(line)
+
+    if not results:
+        msg = f"No items found matching '{query}'"
+        if item_class:
+            msg += f" with class '{item_class}'"
+        return msg + "."
+    return "\n".join(results)
+
+
+@mcp.tool()
 async def get_passive(name: str) -> str:
     """Get the description and effects of a passive skill tree node (including keystones
     and notables). Returns prose description extracted from the wiki page."""

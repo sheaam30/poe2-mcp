@@ -146,6 +146,19 @@ ITEM_FIELDS = [
     "tags",
 ]
 
+CURRENCY_FIELDS = [
+    "name", "class_id", "description", "stack_size", "drop_level",
+]
+
+MAP_FIELDS = [
+    "name", "class_id", "map_tier", "map_area_level", "drop_level",
+    "drop_rarities_ids", "tags",
+]
+
+RUNE_FIELDS = [
+    "name", "class_id", "description", "drop_level", "tags",
+]
+
 STAT_ID_RE = re.compile(r"^static_stat(\d+)_id$")
 
 
@@ -172,17 +185,27 @@ def format_gem(data: dict[str, str]) -> str:
     return "\n".join(lines)
 
 
-def format_item(data: dict[str, str]) -> str:
-    if not data:
-        return "No data found."
+def _format_with_fields(data: dict[str, str], priority_fields: list[str]) -> str:
     lines = []
     shown: set[str] = set()
-    for f in ITEM_FIELDS:
+    for f in priority_fields:
         if f in data:
             lines.append(f"{f}: {data[f]}")
             shown.add(f)
-    # Include implicits and remaining non-recipe fields
     for key, value in data.items():
         if key not in shown and not key.startswith("recipe") and not key.startswith("metadata"):
             lines.append(f"{key}: {value}")
     return "\n".join(lines)
+
+
+def format_item(data: dict[str, str]) -> str:
+    if not data:
+        return "No data found."
+    class_id = data.get("class_id", "")
+    if class_id == "StackableCurrency":
+        return _format_with_fields(data, CURRENCY_FIELDS)
+    if class_id == "Map":
+        return _format_with_fields(data, MAP_FIELDS)
+    if class_id == "SoulCore":
+        return _format_with_fields(data, RUNE_FIELDS)
+    return _format_with_fields(data, ITEM_FIELDS)

@@ -4,11 +4,14 @@ A locally-hosted MCP server that gives Claude access to Path of Exile 2 game dat
 
 ## Tools
 
-- **`search_wiki`** — keyword search across the wiki, returns matching page titles
-- **`get_item`** — full stats for any item (base types, uniques): damage, requirements, implicits
-- **`get_gem`** — skill gem details: description, tags, cast time, mana cost, static stats
-- **`search_gems`** — search gems by name fragment + optional tag filter (Fire, AoE, Support, Melee…)
-- **`get_passive`** — description of any passive tree node, keystone, or notable
+| Tool | Description |
+|---|---|
+| `search_wiki` | Keyword search — returns matching page titles |
+| `get_item` | Full stats for any item (base types, uniques, currency, waystones, runes) |
+| `get_gem` | Skill gem details: description, tags, cast time, mana cost, static stats |
+| `search_gems` | Search gems by name + optional tag filter (Fire, AoE, Support, Melee…) |
+| `search_items` | Search non-gem items by name + optional class filter (Currency, Map, SoulCore…) |
+| `get_passive` | Description of any passive tree node, keystone, or notable |
 
 ## Requirements
 
@@ -35,11 +38,25 @@ Then restart Claude Code — `claude mcp list` should show `poe2: ✓ Connected`
 
 Once registered, just ask Claude naturally:
 
+**Items & gear**
 - "What are the stats on a Vaal Axe?"
+- "Show me the Kingsguard unique body armour"
+- "What does an Exalted Orb do and how does it stack?"
+- "Find me all Tier 5 waystone details"
+
+**Gems**
 - "Show me all lightning support gems"
+- "What's the Galvanic Shards gem description and tags?"
+- "Find me AoE fire spell gems"
+
+**Passives & builds**
 - "What does Resolute Technique do?"
-- "Find me unique items related to bleed"
-- "What's the Fireball gem description and tags?"
+- "Explain the Acrobatics keystone"
+
+**Currency & endgame**
+- "What does a Chaos Orb do?"
+- "Find all rune types"
+- "Search the wiki for Breach mechanics"
 
 ## Data & caching
 
