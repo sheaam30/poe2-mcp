@@ -178,7 +178,7 @@ def extract_prose(wikitext: str, max_chars: int = 800) -> str:
         cleaned = strip_markup(stripped)
         if len(cleaned) > 20:
             lines.append(cleaned)
-        if sum(len(l) for l in lines) >= max_chars:
+        if sum(len(line) for line in lines) >= max_chars:
             break
     return "\n\n".join(lines)
 
@@ -228,7 +228,6 @@ def extract_monster_phases(wikitext: str) -> str:
     lines = wikitext.splitlines()
     output: list[str] = []
     in_table = False
-    current_phase = ""
 
     for line in lines:
         stripped = line.strip()
@@ -236,7 +235,6 @@ def extract_monster_phases(wikitext: str) -> str:
         if re.match(r"^===?.+===?$", stripped):
             header = re.sub(r"=+", "", stripped).strip()
             if any(w in header.lower() for w in ["phase", "encounter", "form"]):
-                current_phase = header
                 output.append(f"\n[{header}]")
                 in_table = False
             continue

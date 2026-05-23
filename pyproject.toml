@@ -20,6 +20,9 @@ rag = [
 [project.scripts]
 poe2-mcp = "poe2_mcp.server:main"
 
+[tool.setuptools.packages.find]
+include = ["poe2_mcp*"]
+
 [build-system]
 requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
